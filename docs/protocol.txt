@@ -1,0 +1,4 @@
+BLAP - Binary Layer Air Protocol/Bardys lame ass protocol
+
+Protocol Server:
+This server will transmit and receive BLAP packets 
