@@ -1,0 +1,7 @@
+BLAP protocol, version 0.1, developed by Brady Bangasser 9/10/24
+
+Packet Structure
+    Header:
+        BLAP packets will start with the 4 bit id, which will be 1101
+        That will be followed by another 4 bit seqeuence that is currently reserved for future use
+

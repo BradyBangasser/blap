@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 bool state = false;
+
 void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
 }
