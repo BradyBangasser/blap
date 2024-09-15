@@ -2,12 +2,26 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 
-bool state = false;
+#include "blap.h"
 
 RF24 radio(D1, D2);
-uint8_t payload = 0;
 
-const uint64_t pipe = 0xE8E8F0F0E1LL;
+uint32_t recv_data(uint8_t *buffer, uint32_t len) {
+  uint32_t payloadLength = 0;
+  if (radio.available()) {
+    radio.read((void *) buffer, len);
+    Serial.printf("0x%x\n", buffer[0]);
+  }
+
+  return payloadLength;
+}
+
+uint8_t send_data(uint8_t *data, uint32_t len) { return -1; }
+
+bool state = false;
+uint8_t payload = 0;
+const uint8_t pipe[] = { 0xCC, 0xCE, 0xCC, 0xCE, 0xCC };
+uint32_t data_len;
 
 inline void blink() {
   digitalWrite(LED_BUILTIN, LOW);
@@ -40,13 +54,16 @@ void setup() {
 }
 
 void loop() {
+  uint8_t buffer[256] = {0};
   if (radio.available()) {
-    radio.read(&payload, 1);
-    Serial.printf("Payload Received: 0x%x\n", payload);
-    blink();
-  } else {
-    // Serial.print("Nothing\n");
+    radio.read((void *) buffer, 256);
+    Serial.printf("0x%x\n", buffer[0]);
   }
+  // data_len = recv_blap_packet(NULL, 256);
+  // if (data_len != -1) {
+  //   Serial.printf("len: %d\n", data_len);
+  //   blink();
+  // }
 
   delay(50);
 }
