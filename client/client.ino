@@ -42,7 +42,8 @@ void loop() {
     if (radio.available(&pipe)) {
       uint8_t bytes = radio.getDynamicPayloadSize();
       radio.read(payload, bytes);
-      Serial.printf("0x%x\n", payload[0]);
+
+      Serial.println(payload);
       blink(300);
     }
 }  // loop

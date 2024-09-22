@@ -35,7 +35,6 @@ void setup() {
   }
 
   radio.setPALevel(RF24_PA_MAX);
-  // radio.setPayloadSize(sizeof(payload));
   radio.openWritingPipe(address[0]);
   radio.stopListening();
   radio.enableDynamicPayloads();
