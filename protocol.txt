@@ -12,4 +12,4 @@ Packet Structure
         payload, consider encrypting and compression algorithms
 
     Trailer:
-        none yet
+        checksum
