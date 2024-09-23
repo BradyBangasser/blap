@@ -3,13 +3,42 @@
 #include <stddef.h>
 #include <memory.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+static inline void blap_delay(uint32_t ms) {
+    #ifdef Arduino_h
+    delay(ms);
+    #else
+    struct timespec s, c;
+    clock_gettime(CLOCK_MONOTONIC, &s);
+    s.tv_sec += ms / 1000;
+    s.tv_nsec += (ms % 1000) * 1e6;
+
+    while (memcmp(&s, &c, sizeof(struct timespec)) >= 0) {
+        clock_gettime(CLOCK_MONOTONIC, &c);
+    }
+    #endif
+}
+
 static const uint16_t BLAP_MAX_PAYLOAD_LEN = 69;
 static const uint8_t BLAP_IDENTIFIER = 0x0C;
+
+struct blap_context {
+    const uint32_t addr;
+    const bool server;
+};
+
+struct blap_context_opts {
+    bool server;
+};
+
+struct blap_context *create_blap_context(struct blap_context_opts opts);
+void free_blap_context(struct blap_context *context);
 
 enum BLAP_ERROR_CODES {
     BLAP_NOT_IMPL = -1,
@@ -20,7 +49,7 @@ enum BLAP_ERROR_CODES {
 
 struct blap_packet_header {
     uint8_t blap_id : 4;
-    uint8_t reserved_0 : 4;
+    uint8_t packet_type : 4;
     uint32_t reserved_1;
     uint8_t frag;
     uint16_t length;

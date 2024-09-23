@@ -1,4 +1,5 @@
 #include "blap.h"
+#include <pthread.h>
 
 enum BLAP_ERROR_CODES send_blap_packet(uint8_t *data, uint16_t length) {
     if (data == NULL) return BLAP_POINTER_NOT_VALID;
@@ -22,4 +23,24 @@ enum BLAP_ERROR_CODES recv_blap(uint8_t *data, uint16_t length) {
     struct blap_packet_header *header = (struct blap_packet_header *) src_data;
 
     return BLAP_NOT_IMPL;
+}
+
+void *server_notification() {
+
+    return NULL;
+}
+
+struct blap_context *create_blap_context(struct blap_context_opts opts) {
+    struct blap_context *bc = (struct blap_context *) malloc(sizeof(struct blap_context));
+
+    if (opts.server) {
+        pthread_t tid;
+        pthread_create(&tid, NULL, server_notification, NULL);
+    }
+
+    if (bc == NULL) {
+        return NULL;
+    }
+
+    return bc;
 }
