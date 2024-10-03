@@ -1,3 +1,9 @@
-all: out/client out/basestation
+FLAGS := -I/usr/share/arduino/hardware/arduino /usr/share/arduino/hardware/arduino/avr/libraries
 
-out/client: 
+all: out out/client out/basestation
+
+out/client: client.c blap.o
+	clang $^ -o $@ $(FLAGS)
+
+out: 
+	mkdir out

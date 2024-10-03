@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <SPI.h>
 #include "blap.h"
 #include "RF24.h"
