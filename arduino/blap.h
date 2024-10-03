@@ -2,6 +2,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <memory.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,9 +41,6 @@ uint8_t send_data(uint8_t *data, uint32_t len);
  * @returns length of received data
  */
 uint32_t recv_data(uint8_t *buffer, uint32_t len);
-
-int8_t init_device();
-int8_t data_available();
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <stdio.h>
 #include "constants.h"
 
 #define COLOR_RESET "\x1b[0m"
@@ -33,8 +34,8 @@
 #define SUCCESSF(f, ...) printf(SUCCESS_COLOR "[SUCCESS] " f COLOR_RESET, __VA_ARGS__)
 
 #ifdef M_DEBUG
-#define DEBUG(f) printf(DEBUG_COLOR "[DEBUG] " f COLOR_RESET)
-#define DEBUGF(f, ...) printf(DEBUG_COLOR "[DEBUG] " f COLOR_RESET, __VA_ARGS__)
+#define DEBUG(f) printf(DEBUG_COLOR "[DEBUG]   " f COLOR_RESET)
+#define DEBUGF(f, ...) printf(DEBUG_COLOR "[DEBUG]   " f COLOR_RESET, __VA_ARGS__)
 #else
 #define DEBUG
 #define DEBUGF

@@ -1,9 +1,16 @@
-FLAGS := -I/usr/share/arduino/hardware/arduino /usr/share/arduino/hardware/arduino/avr/libraries
+FLAGS := -I.
+.PHONY: test clean
 
-all: out out/client out/basestation
+test: out test.out
 
-out/client: client.c blap.o
+test.out: out/test.c.o out/blap.c.o out/domain_driver.c.o
 	clang $^ -o $@ $(FLAGS)
 
+out/%.c.o: %.c
+	clang -c $^ -o $@ $(FLAGS)
+
 out: 
-	mkdir out
+	mkdir out 
+
+clean:
+	rm -r out test.out
