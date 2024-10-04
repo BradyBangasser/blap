@@ -5,6 +5,8 @@ test: out test.out
 
 test.out: out/test.c.o out/blap.c.o out/domain_driver.c.o
 	clang $^ -o $@ $(FLAGS)
+client_test.out: out/client_test.c.o out/blap.c.o out/domain_driver.c.o
+	clang $^ -o $@ $(FLAGS)
 
 out/%.c.o: %.c
 	clang -c $^ -o $@ $(FLAGS)

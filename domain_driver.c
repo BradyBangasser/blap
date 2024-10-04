@@ -36,7 +36,7 @@ int8_t init_device() {
 
     struct sockaddr_un addr;
     addr.sun_family = AF_LOCAL;
-    strcpy(addr.sun_path, "/var/run/blap.socke");
+    strcpy(addr.sun_path, "/var/run/blap.socket");
     err = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
     if (err != 0) {
         ERRORF("Error binding socket, errno %d\n", errno);
