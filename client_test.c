@@ -3,6 +3,7 @@
 #include <sys/un.h>
 
 #include "logging.h"
+#include "domain_driver.h"
 
 uint8_t send_data(uint8_t *data, uint32_t len) { return -1; }
 uint32_t recv_data(uint8_t *buffer, uint32_t len) { return -1; }
@@ -16,6 +17,8 @@ int main() {
     }
 
     struct sockaddr_un addr;
+    addr.sun_family = AF_LOCAL;
+    strcpy(addr.sun_path, SOCKET_PATH);
 
     int err = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
     
