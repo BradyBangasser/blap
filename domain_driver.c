@@ -12,7 +12,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <memory.h>
+#include <stdlib.h>
 
+#define MAXCONNS 8
 
 // TODO portablity
 
@@ -20,6 +23,8 @@ static int32_t sock;
 static int8_t err = 0;
 static struct pollfd poll_opts;
 static const int true_flag = 1;
+static uint8_t conns = 0;
+static struct connection *connections[MAXCONNS] = { 0 };
 
 struct ucred {
     uint32_t pid;
@@ -81,13 +86,14 @@ int8_t init_device() {
     return 0;
 }
 
-pid_t get_pid(int sock) {
-    struct ucred cred;
-    socklen_t cred_len = sizeof(cred);
+int8_t first_available_connection() {
+    for (int i = 0; i < sizeof(conns) * 8; i++) {
+        if ((conns & (1 << i)) == 0) {
+            return i;
+        }
+    }
 
-    getsockopt(sock, SOCK_STREAM, SO_PEERPIDFD, &cred, &cred_len);
-
-    return cred.gid;
+    return -1;
 }
 
 int8_t start_server() {
@@ -100,6 +106,11 @@ int8_t start_server() {
     addr_len = addr_len;
     
     while (true) {
+        if (conns == 0xFF) {
+            WARNF("Max amount of connections reached (%ul)\n", (unsigned int) sizeof(conns) * 8);
+            continue;
+        }
+
         new_sock = accept(sock, &client_addr, &addr_len);
 
         if (new_sock < 0) {
@@ -108,9 +119,13 @@ int8_t start_server() {
             return -1;
         }
 
-        pid_t pid = get_pid(new_sock);
+        struct connection *conn = (struct connection *) malloc(sizeof(struct connection));
+        if (conn == NULL) {
+            ERROR("Failed to malloc data for connection context\n");
+            return -1;
+        }
 
-        INFOF("Accepted connection from %d\n", pid);
+        INFOF("Accepted connection, fd: %d\n", new_sock);
         return 1;
     }
 }
