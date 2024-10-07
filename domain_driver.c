@@ -96,6 +96,10 @@ int8_t first_available_connection() {
     return -1;
 }
 
+void set_connection(uint8_t i) {
+    conns |= (1 << i);
+}
+
 int8_t start_server() {
     socklen_t addr_len;
     int new_sock;
@@ -106,10 +110,6 @@ int8_t start_server() {
     addr_len = addr_len;
     
     while (true) {
-        if (conns == 0xFF) {
-            WARNF("Max amount of connections reached (%ul)\n", (unsigned int) sizeof(conns) * 8);
-            continue;
-        }
 
         new_sock = accept(sock, &client_addr, &addr_len);
 
@@ -119,14 +119,32 @@ int8_t start_server() {
             return -1;
         }
 
+        if (conns == 0xFF) {
+            WARNF("Max amount of connections reached (%ul)\n", (unsigned int) sizeof(conns) * 8);
+            // TODO delay
+            close(new_sock);
+            continue;
+        }
+
+        uint8_t cidx = first_available_connection();
+
         struct connection *conn = (struct connection *) malloc(sizeof(struct connection));
         if (conn == NULL) {
             ERROR("Failed to malloc data for connection context\n");
             return -1;
         }
 
+        set_connection(cidx);
+        conn->fd = new_sock;
+
         INFOF("Accepted connection, fd: %d\n", new_sock);
-        return 1;
+        const char *message = "Hello World";
+        err = write(new_sock, message, strlen(message));
+
+        if (err == -1) {
+            ERRORF("Failed to write to socket %d, errno %d\n", new_sock, errno);
+            return -1;
+        }
     }
 }
     

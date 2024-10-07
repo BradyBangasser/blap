@@ -27,5 +27,10 @@ int main() {
         return -1;
     }
 
-    while (1);
+    char buffer[256];
+    recv(sock, buffer, sizeof(buffer), 0);
+    INFOF("received %s\n", buffer);
+
+    return 0;
 }
+
