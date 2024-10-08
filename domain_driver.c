@@ -1,8 +1,8 @@
+#define _GNU_SOURCE
+
 #include "blap.h"
 #include "logging.h"
 #include "domain_driver.h"
-
-#define _GNU_SOURCE
 
 #include <errno.h>
 #include <fcntl.h>
@@ -22,18 +22,19 @@
 static int32_t sock;
 static int8_t err = 0;
 static struct pollfd poll_opts;
+static struct pollfd sock_poll_opts[8];
 static const int true_flag = 1;
 static uint8_t conns = 0;
 static struct connection *connections[MAXCONNS] = { 0 };
 
-struct ucred {
-    uint32_t pid;
-    uint32_t uid;
-    uint32_t gid;
-};
-
 int8_t init_device() {
     DEBUG("Initializing Device\n");
+
+    // TODO make this a memcpy function
+    for (int i = 0; i < sizeof(sock_poll_opts); i++) {
+        sock_poll_opts[i].revents = POLLRDHUP;
+    }
+
     sock = socket(AF_LOCAL, SOCK_STREAM, 0);
     if (sock < 0) {
         ERRORF("Error initializing socket, errno: %d\n", errno);
@@ -80,7 +81,7 @@ int8_t init_device() {
 
     poll_opts.fd = sock;
     poll_opts.events = POLLIN;
-    poll_opts.revents = POLLIN;
+    poll_opts.revents = POLLIN | POLLRDHUP;
 
     DEBUG("Initialized device\n");
     return 0;
@@ -110,6 +111,9 @@ int8_t start_server() {
     addr_len = addr_len;
     
     while (true) {
+        int p = poll(sock_poll_opts, first_available_connection(), 1);
+
+        if (p != 0) DEBUGF("P value: %d\n", p);
 
         new_sock = accept(sock, &client_addr, &addr_len);
 
@@ -136,6 +140,7 @@ int8_t start_server() {
 
         set_connection(cidx);
         conn->fd = new_sock;
+        sock_poll_opts[cidx].fd = new_sock;
 
         INFOF("Accepted connection, fd: %d\n", new_sock);
         const char *message = "Hello World";

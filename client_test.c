@@ -9,6 +9,7 @@ uint8_t send_data(uint8_t *data, uint32_t len) { return -1; }
 uint32_t recv_data(uint8_t *buffer, uint32_t len) { return -1; }
 
 int main() {
+    INFO("Starting Client\n");
     int sock = socket(AF_LOCAL, SOCK_STREAM, 0);
 
     if (sock < 0) {
@@ -31,6 +32,7 @@ int main() {
     recv(sock, buffer, sizeof(buffer), 0);
     INFOF("received %s\n", buffer);
 
+    while (1);
     return 0;
 }
 
