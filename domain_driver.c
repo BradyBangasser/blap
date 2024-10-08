@@ -31,7 +31,7 @@ int8_t init_device() {
     DEBUG("Initializing Device\n");
 
     // TODO make this a memcpy function
-    for (int i = 0; i < sizeof(sock_poll_opts); i++) {
+    for (int i = 0; i < sizeof(sock_poll_opts) / sizeof(struct pollfd); i++) {
         sock_poll_opts[i].revents = POLLRDHUP;
     }
 
@@ -80,8 +80,8 @@ int8_t init_device() {
     }
 
     poll_opts.fd = sock;
-    poll_opts.events = POLLIN;
-    poll_opts.revents = POLLIN | POLLRDHUP;
+    poll_opts.events = POLLRDHUP;
+    poll_opts.revents = 0;
 
     DEBUG("Initialized device\n");
     return 0;
@@ -101,6 +101,10 @@ void set_connection(uint8_t i) {
     conns |= (1 << i);
 }
 
+void reset_connection(uint8_t i) {
+    conns &= (~(1 << i));
+}
+
 int8_t start_server() {
     socklen_t addr_len;
     int new_sock;
@@ -111,9 +115,20 @@ int8_t start_server() {
     addr_len = addr_len;
     
     while (true) {
-        int p = poll(sock_poll_opts, first_available_connection(), 1);
+        int p = poll(sock_poll_opts, MAXCONNS, 1);
 
-        if (p != 0) DEBUGF("P value: %d\n", p);
+        if (p > 0) {
+            for (int i = 0; i < MAXCONNS; i++) {
+                if (sock_poll_opts[i].revents & POLLHUP) {
+                    // client has disconnected, free mem and make sure socket spot is available
+                    INFOF("Resetting connection no %d\n", i);
+                    close(sock_poll_opts[i].fd);
+                    sock_poll_opts[i].fd = -1;
+                    reset_connection(i);
+                }
+            }
+        }
+                    
 
         new_sock = accept(sock, &client_addr, &addr_len);
 
@@ -132,17 +147,10 @@ int8_t start_server() {
 
         uint8_t cidx = first_available_connection();
 
-        struct connection *conn = (struct connection *) malloc(sizeof(struct connection));
-        if (conn == NULL) {
-            ERROR("Failed to malloc data for connection context\n");
-            return -1;
-        }
-
         set_connection(cidx);
-        conn->fd = new_sock;
         sock_poll_opts[cidx].fd = new_sock;
 
-        INFOF("Accepted connection, fd: %d\n", new_sock);
+        INFOF("Accepted connection no %d\n", cidx);
         const char *message = "Hello World";
         err = write(new_sock, message, strlen(message));
 
