@@ -25,7 +25,6 @@ static struct pollfd poll_opts;
 static struct pollfd sock_poll_opts[8];
 static const int true_flag = 1;
 static uint8_t conns = 0;
-static struct connection *connections[MAXCONNS] = { 0 };
 
 int8_t init_device() {
     DEBUG("Initializing Device\n");
@@ -106,13 +105,12 @@ void reset_connection(uint8_t i) {
 }
 
 int8_t start_server() {
-    socklen_t addr_len;
+    socklen_t addr_len = 0;
     int new_sock;
     INFO("Starting Server\n");
 
     struct sockaddr client_addr;
     memset(&client_addr, 0, sizeof(client_addr));
-    addr_len = addr_len;
     
     while (true) {
         int p = poll(sock_poll_opts, MAXCONNS, 1);

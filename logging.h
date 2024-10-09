@@ -6,6 +6,8 @@
 #include <memory.h>
 #include <errno.h>
 
+#define TIMING_CLOCK CLOCK_MONOTONIC
+
 #define COLOR_RESET "\x1b[0m"
 
 #ifndef ERROR_COLOR
@@ -54,31 +56,29 @@ static struct timespec ts;
 #endif
 
 static inline void start_time() {
-    nwarns = 0;
-    nerrs = 0;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+    clock_gettime(TIMING_CLOCK, &ts);
 }
 
 static inline void stop_time_print_data() {
     struct timespec ets;
 
-    if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ets) != 0) {
+    if (clock_gettime(TIMING_CLOCK, &ets) != 0) {
         ERRORF("Failed to start clock, errno %d\n", errno);
         return;
     }
 
-    ets.tv_sec -= ts.tv_sec;
-    ets.tv_nsec -= ts.tv_nsec;
+    uint32_t tsec = ets.tv_sec - ts.tv_sec;
+    uint32_t tnsec = ets.tv_nsec -= ts.tv_nsec;
 
-    uint32_t hours = ets.tv_sec / 3600,
-             minutes = (ets.tv_sec % 3600) / 60;
-    ets.tv_sec %= 60 * 3600;
+    uint32_t hours = tsec / 3600,
+             minutes = (tsec % 3600) / 60 % 60;
+    tsec %= 60 * 3600;
 
     printf(MAGENTIA "\n | -----Execution Stats-----\n | Run Time: ");
     if (hours) printf("%dh ", hours);
-    if (minutes) printf("%dn ", minutes);
-    if (ets.tv_sec) printf("%lds ", ets.tv_nsec);
-    printf("%.4f ms\n", ets.tv_nsec / 1.0e7);
+    if (minutes) printf("%dm ", minutes);
+    if (tsec > 0) printf("%ds ", tsec);
+    printf("%.4f ms\n", tnsec / 1.0e7);
 
     printf(" | Issues: ");
     if (nerrs > 0) printf(ERROR_COLOR);
@@ -91,7 +91,7 @@ static inline void stop_time_print_data() {
 
 static inline struct timespec stop_time() {
     struct timespec ets;
-    if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ets) != 0) {
+    if (clock_gettime(TIMING_CLOCK, &ets) != 0) {
         memset(&ets, 0, sizeof(ets));
         ERRORF("Failed to start clock, errno %d\n", errno);
         return ets;
