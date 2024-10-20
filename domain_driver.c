@@ -121,9 +121,9 @@ int8_t start_server() {
                 if (sock_poll_opts[i].revents & POLLHUP) {
                     // client has disconnected, free mem and make sure socket spot is available
 
-                    if (on_disconnect != NULL) {
-                        DEBUGF("Executing on_disconnect at 0x%lx\n", (uint64_t) on_disconnect);
-                        on_disconnect(connected_devices[i]);
+                    if (on_client_disconnect != NULL) {
+                        DEBUGF("Executing on_client_disconnect at 0x%lx\n", (uint64_t) on_client_disconnect);
+                        on_client_disconnect(connected_devices[i]);
                     } else {
                         WARN("No on_disconnect function defined\n");
                     }
@@ -177,9 +177,38 @@ int8_t start_server() {
 }
 
 int8_t start_client() {
+    int i;
+    ssize_t len;
+    uint8_t buffer[256];
 
     while (true) {
+        if (poll(sock_poll_opts, MAXCONNS, 1) > 0) {
+            for (i = 0; i < MAXCONNS; i++) {
+                if (sock_poll_opts[i].revents & POLLHUP) {
+                   if (on_disconnect != NULL) {
+                        on_disconnect(connected_devices[i]);
+                    } else {
+                        WARN("No on_disconnect function defined\n");
+                    }
+                }
 
+                if (sock_poll_opts[i].revents & POLLIN) {
+                    len = recv(connected_devices[i]->addr, buffer, sizeof(buffer), 0);
+
+                    if (len == -1) {
+                        if (errno == EWOULDBLOCK) {
+                            WARN("Poll reported message, but recv didn't\n");
+                            continue;
+                        }
+
+                        ERRORF("recv failed, errno: 0x%x\n", errno);
+                        continue;
+                    }
+
+
+                }
+            }
+        }
     }
 }
 

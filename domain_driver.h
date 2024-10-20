@@ -12,6 +12,7 @@ extern "C" {
     };
 
     int8_t start_server();
+    int8_t init_device();
 #ifdef __cplusplus
 }
 #endif

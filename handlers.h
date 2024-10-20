@@ -4,8 +4,8 @@
 #include "types.h"
 
 // ----- Server Handlers -----
-__attribute__((weak)) void on_client_connect();
-__attribute__((weak)) void on_client_disconnect();
+__attribute__((weak)) void on_client_connect(struct connected_device * const);
+__attribute__((weak)) void on_client_disconnect(struct connected_device * const);
 __attribute__((weak)) void on_unexpected_client_disconnect();
 __attribute__((weak)) void on_client_message();
 

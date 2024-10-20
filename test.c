@@ -1,4 +1,3 @@
-#include "blap.h"
 #include "logging.h"
 #include "domain_driver.h"
 #include "signals.h"
