@@ -1,8 +1,8 @@
 #define _GNU_SOURCE
 
-#include "blap.h"
 #include "logging.h"
 #include "domain_driver.h"
+#include "blap.c"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -25,6 +25,7 @@ static struct pollfd poll_opts;
 static struct pollfd sock_poll_opts[8];
 static const int true_flag = 1;
 static uint8_t conns = 0;
+static struct connected_device *connected_devices[8] = {0};
 
 int8_t init_device() {
     DEBUG("Initializing Device\n");
@@ -119,6 +120,15 @@ int8_t start_server() {
             for (int i = 0; i < MAXCONNS; i++) {
                 if (sock_poll_opts[i].revents & POLLHUP) {
                     // client has disconnected, free mem and make sure socket spot is available
+
+                    if (on_disconnect != NULL) {
+                        DEBUGF("Executing on_disconnect at 0x%lx\n", (uint64_t) on_disconnect);
+                        on_disconnect(connected_devices[i]);
+                    } else {
+                        WARN("No on_disconnect function defined\n");
+                    }
+
+
                     INFOF("Resetting connection no %d\n", i);
                     close(sock_poll_opts[i].fd);
                     sock_poll_opts[i].fd = -1;
@@ -148,28 +158,42 @@ int8_t start_server() {
         set_connection(cidx);
         sock_poll_opts[cidx].fd = new_sock;
 
-        INFOF("Accepted connection no %d\n", cidx);
-        const char *message = "Hello World";
-        err = write(new_sock, message, strlen(message));
+        connected_devices[cidx] = malloc(sizeof(struct connected_device));
+        connected_devices[cidx]->addr = new_sock;
+        connected_devices[cidx]->connection_id = cidx;
 
         if (err == -1) {
             ERRORF("Failed to write to socket %d, errno %d\n", new_sock, errno);
             return -1;
         }
+
+        INFOF("Accepted connection no %d\n", cidx);
+        
+        if (on_connect != NULL) {
+            DEBUGF("Executing on_connect at 0x%lx\n", (uint64_t) on_connect);
+            on_connect(connected_devices[cidx]);
+        }
     }
 }
-    
 
-int8_t data_available() {
-    DEBUG("Polling socket for available messages\n");
-    int p = poll(&poll_opts, 1, 10);
-    if (p == -1) {
-        ERRORF("Failed to poll socket, errno %d\n", errno);
+int8_t start_client() {
+
+    while (true) {
+
+    }
+}
+
+__ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, uint32_t len) {
+    // ensure connection is valid
+
+    if (dev == NULL || data == NULL) {
+        errno = EFAULT;
         return -1;
     }
 
-    DEBUG("Polled socket\n");
-    return !!p;
+    if (len == 0) {
+        WARNF("Sending packet of length 0 to 0x%lx\n", dev->addr);
+    }
+
+    return write(dev->addr, data, len);
 }
-
-
