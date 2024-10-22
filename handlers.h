@@ -13,7 +13,7 @@ __attribute__((weak)) void on_client_message();
 __attribute__((weak)) void on_connect(struct connected_device * const);
 __attribute__((weak)) void on_disconnect(struct connected_device * const);
 __attribute__((weak)) void on_unexpected_disconnect();
-__attribute__((weak)) void on_message();
+__attribute__((weak)) void on_message(const struct connected_device * const, struct message * const);
 
 // Client must implement this functions:
 void on_data(void (*)(uint8_t *data, uint32_t len));
