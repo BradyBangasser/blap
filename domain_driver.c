@@ -133,6 +133,8 @@ int8_t start_server() {
                     close(sock_poll_opts[i].fd);
                     sock_poll_opts[i].fd = -1;
                     reset_connection(i);
+                    free(connected_devices[i]);
+                    connected_devices[i] = 0;
                 }
             }
         }
@@ -190,6 +192,14 @@ int8_t start_client() {
                     } else {
                         WARN("No on_disconnect function defined\n");
                     }
+
+                    INFOF("Resetting connection no %d\n", i);
+                    close(sock_poll_opts[i].fd);
+                    sock_poll_opts[i].fd = -1;
+                    reset_connection(i);
+                    free(connected_devices[i]);
+                    connected_devices[i] = 0;
+                    continue;
                 }
 
                 if (sock_poll_opts[i].revents & POLLIN) {
@@ -205,7 +215,30 @@ int8_t start_client() {
                         continue;
                     }
 
+                    if (on_message != NULL) {
+                        struct message *msg = malloc(sizeof(struct message));
 
+                        if (msg == NULL) {
+                            ERRORF("Failed to malloc data for struct message, errno: %d\n", errno);
+                            continue;
+                        }
+
+                        msg->length = len;
+                        msg->data = malloc(sizeof(uint8_t) * len);
+
+                        if (msg->data == NULL) {
+                            free(msg);
+                            msg = 0;
+                            ERRORF("Failed to malloc data for struct message, errno: %d\n", errno);
+                            continue;
+                        }
+
+                        memcpy(msg->data, buffer, len);
+                        DEBUGF("Executing on_message at 0x%lx\n", (uint64_t) on_message);
+                        on_message(connected_devices[i], msg);
+                    } else {
+                        WARN("No on_message function defined\n");
+                    }
                 }
             }
         }

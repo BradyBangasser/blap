@@ -36,6 +36,8 @@
 
 extern uint32_t nerrs;
 extern uint32_t nwarns;
+extern uint64_t unfreed_allocs;
+
 static struct timespec ts;
 
 #define ERRORF(f, ...) printf(ERROR_COLOR "[ERROR]   " f COLOR_RESET, __VA_ARGS__); ++nerrs
@@ -50,6 +52,7 @@ static struct timespec ts;
 #ifdef M_DEBUG
 #define DEBUG(f) printf(DEBUG_COLOR "[DEBUG]   " f COLOR_RESET)
 #define DEBUGF(f, ...) printf(DEBUG_COLOR "[DEBUG]   " f COLOR_RESET, __VA_ARGS__)
+
 #else
 #define DEBUG
 #define DEBUGF
@@ -72,7 +75,7 @@ static inline void stop_time_print_data() {
 
     uint32_t hours = tsec / 3600,
              minutes = (tsec % 3600) / 60 % 60;
-    tsec %= 60 * 3600;
+    tsec %= (60 * 3600);
 
     printf(MAGENTIA "\n | -----Execution Stats-----\n | Run Time: ");
     if (hours) printf("%dh ", hours);
