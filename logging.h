@@ -75,7 +75,7 @@ static inline void stop_time_print_data() {
 
     uint32_t hours = tsec / 3600,
              minutes = (tsec % 3600) / 60 % 60;
-    tsec %= (60 * 3600);
+    tsec %= 60;
 
     printf(MAGENTIA "\n | -----Execution Stats-----\n | Run Time: ");
     if (hours) printf("%dh ", hours);

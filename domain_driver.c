@@ -2,7 +2,7 @@
 
 #include "logging.h"
 #include "domain_driver.h"
-#include "blap.c"
+#include "handlers.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -178,7 +178,36 @@ int8_t start_server() {
     }
 }
 
-int8_t start_client() {
+int8_t pconnect() {
+    int sock = socket(AF_LOCAL, SOCK_STREAM, 0);
+    struct sockaddr_un addr;
+    addr.sun_family = AF_LOCAL;
+    strcpy(addr.sun_path, SOCKET_PATH);
+
+    int err = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
+    
+    if (err == -1) {
+        ERRORF("Error connecting to socket, errno: %d\n", errno);
+        return -1;
+    }
+
+    int cidx = first_available_connection();
+
+    connected_devices[cidx] = malloc(sizeof(struct connected_device));
+
+    if (connected_devices[cidx] == NULL) {
+        ERRORF("Failed to allocate memory for connected_device, errno %d\n", errno);
+        return -1;
+    }
+
+    connected_devices[cidx]->addr = sock;
+    connected_devices[cidx]->connection_id = cidx;
+    set_connection(cidx);
+
+    return cidx;
+}
+
+int8_t start_client(void (*cb)()) {
     int i;
     ssize_t len;
     uint8_t buffer[256];
@@ -199,7 +228,6 @@ int8_t start_client() {
                     reset_connection(i);
                     free(connected_devices[i]);
                     connected_devices[i] = 0;
-                    continue;
                 }
 
                 if (sock_poll_opts[i].revents & POLLIN) {
@@ -240,7 +268,16 @@ int8_t start_client() {
                         WARN("No on_message function defined\n");
                     }
                 }
+
+                // Handle other things
             }
+        }
+
+        if (cb != NULL) {
+            DEBUGF("Executing client callback at 0x%lx\n", (uint64_t) cb);
+            cb();
+        } else {
+            WARN("No client callback defined, this is likely not intentional\n");
         }
     }
 }

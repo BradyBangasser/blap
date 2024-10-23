@@ -18,3 +18,6 @@ __attribute__((weak)) void on_message(const struct connected_device * const, str
 // Client must implement this functions:
 void on_data(void (*)(uint8_t *data, uint32_t len));
 __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, uint32_t len);
+// On success returns connection id
+int8_t pconnect();
+int8_t start_client(void (*cb)());
