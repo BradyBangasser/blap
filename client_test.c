@@ -8,9 +8,17 @@
 uint8_t send_data(uint8_t *data, uint32_t len) { return -1; }
 uint32_t recv_data(uint8_t *buffer, uint32_t len) { return -1; }
 
+void cb() {
+    static int c = 1;
+    if (c == 1) {
+        pconnect();
+        c--;
+    }
+}
+
 int main() {
     INFO("Starting Client\n");
-    start_client(NULL);
+    start_client(cb);
     
 //    int sock = socket(AF_LOCAL, SOCK_STREAM, 0);
 //

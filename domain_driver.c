@@ -211,6 +211,9 @@ int8_t start_client(void (*cb)()) {
     int i;
     ssize_t len;
     uint8_t buffer[256];
+    #ifdef DEBUG
+    static uint8_t hasDebugPrinted = 0;
+    #endif
 
     while (true) {
         if (poll(sock_poll_opts, MAXCONNS, 1) > 0) {
