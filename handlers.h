@@ -21,3 +21,4 @@ __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, 
 // On success returns connection id
 int8_t pconnect();
 int8_t start_client(void (*cb)());
+const struct connected_device * const get_connection(uint8_t connection_id);

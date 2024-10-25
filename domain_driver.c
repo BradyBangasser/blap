@@ -32,7 +32,8 @@ int8_t init_device() {
 
     // TODO make this a memcpy function
     for (int i = 0; i < sizeof(sock_poll_opts) / sizeof(struct pollfd); i++) {
-        sock_poll_opts[i].revents = POLLRDHUP;
+        sock_poll_opts[i].revents = POLLIN | POLLHUP;
+        sock_poll_opts[i].events = POLLIN | POLLHUP;
     }
 
     sock = socket(AF_LOCAL, SOCK_STREAM, 0);
@@ -80,8 +81,8 @@ int8_t init_device() {
     }
 
     poll_opts.fd = sock;
-    poll_opts.events = POLLRDHUP;
-    poll_opts.revents = 0;
+    poll_opts.events = 0xFFFF;
+    poll_opts.revents = 0xFFFF;
 
     DEBUG("Initialized device\n");
     return 0;
@@ -136,8 +137,21 @@ int8_t start_server() {
                     free(connected_devices[i]);
                     connected_devices[i] = 0;
                 }
+
+                if (sock_poll_opts[i].revents & POLLIN) {
+                    uint8_t buffer[512] = {0};
+
+                    int32_t len = recv(connected_devices[i]->addr, buffer, sizeof(buffer), 0);
+                    
+                    DEBUGF("%s\n", buffer);
+
+                    if (on_client_message != NULL) {
+                        on_client_message();
+                    }
+                }
             }
         }
+
                     
 
         new_sock = accept(sock, &client_addr, &addr_len);
@@ -207,12 +221,20 @@ int8_t pconnect() {
     return cidx;
 }
 
+const struct connected_device * const get_connection(uint8_t connection_id) {
+    if (connection_id >= MAXCONNS) {
+        return NULL;
+    }
+
+    return connected_devices[connection_id];
+}
+
 int8_t start_client(void (*cb)()) {
     int i;
     ssize_t len;
     uint8_t buffer[256];
     #ifdef DEBUG
-    static uint8_t hasDebugPrinted = 0;
+    static uint8_t has_debug_printed = 0;
     #endif
 
     while (true) {
@@ -277,7 +299,13 @@ int8_t start_client(void (*cb)()) {
         }
 
         if (cb != NULL) {
+            #ifdef DEBUG
+            if (!(has_debug_printed & 0x01))
+            #endif
+            {
             DEBUGF("Executing client callback at 0x%lx\n", (uint64_t) cb);
+            has_debug_printed |= 0x01;
+            }
             cb();
         } else {
             WARN("No client callback defined, this is likely not intentional\n");
