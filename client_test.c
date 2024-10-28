@@ -1,5 +1,4 @@
 #include <sys/socket.h>
-#include <errno.h>
 #include <unistd.h>
 #include <sys/un.h>
 #include <sys/socket.h>
@@ -9,34 +8,38 @@
 
 uint8_t send_data(uint8_t *data, uint32_t len) { return -1; }
 uint32_t recv_data(uint8_t *buffer, uint32_t len) { return -1; }
+static int c = 1;
 
 void cb() {
-    static int c = 1;
-    int8_t connection_id;
+    static int8_t connection_id = -1;
     uint8_t buffer[256] = { 0 };
-    const struct connected_device *cdev;
+    const struct connected_device *cdev = NULL;
 
-    if (c == 1) {
-        c--;
+    if (c) {
+        c = 0;
         connection_id = pconnect();
 
-        if (connection_id == -1) {
-            return;    
-        }
+    }
 
-        cdev = get_connection(connection_id);
+    if (connection_id == -1) {
+        return;    
+    }
 
-        if (cdev == NULL) {
-            ERROR("Failed to fetch connection\n");
+    cdev = get_connection(connection_id);
+
+    if (cdev == NULL) {
+        ERROR("Failed to fetch connection\n");
+        return;
+    }
+
+    if (recv(cdev->addr, buffer, sizeof(buffer), 0) > 0) {
+        INFOF("Received message from server: '%s'\n", buffer);
+        if (strcmp((char *) buffer, "From Server")) {
             return;
         }
 
-        if (recv(cdev->addr, buffer, sizeof(buffer), 0) > 0) {
-            INFOF("Received message from server: '%s'\n", buffer);
-            int res = write(cdev->addr, buffer, sizeof(buffer));
-            DEBUGF("res: %d\n", res);
-        }
-
+        int res = write(cdev->addr, buffer, sizeof(buffer));
+        DEBUGF("res: %d\n", res);
     }
 }
 

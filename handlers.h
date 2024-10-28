@@ -7,7 +7,7 @@
 __attribute__((weak)) void on_client_connect(struct connected_device * const);
 __attribute__((weak)) void on_client_disconnect(struct connected_device * const);
 __attribute__((weak)) void on_unexpected_client_disconnect();
-__attribute__((weak)) void on_client_message();
+__attribute__((weak)) void on_client_message(const struct connected_device * const src, struct message * const msg);
 
 // ----- Client Handlers -----
 __attribute__((weak)) void on_connect(struct connected_device * const);
@@ -22,3 +22,4 @@ __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, 
 int8_t pconnect();
 int8_t start_client(void (*cb)());
 const struct connected_device * const get_connection(uint8_t connection_id);
+__ssize_t send_messsages_to(const struct connected_device * const dev, const struct message * messages, uint32_t nmess);

@@ -16,6 +16,11 @@
 #include <stdlib.h>
 
 #define MAXCONNS 8
+#ifdef DEBUG
+#define __IF_DEBUG_ONCE(flag) if (has_debug_printed ^ flag) (has_debug_printed |= flag) &&
+#else
+#define __IF_DEBUG_ONCE(flag)
+#endif
 
 // TODO portablity
 
@@ -26,6 +31,14 @@ static struct pollfd sock_poll_opts[8];
 static const int true_flag = 1;
 static uint8_t conns = 0;
 static struct connected_device *connected_devices[8] = {0};
+
+#ifdef DEBUG
+// This is to make sure debug messages only get printed once
+enum debug_message {
+    DM_EOM = 0x01, // Execute on Message   
+    DM_NOM = 0x02, // No on Message defined
+};
+#endif
 
 int8_t init_device() {
     DEBUG("Initializing Device\n");
@@ -109,6 +122,10 @@ void reset_connection(uint8_t i) {
 int8_t start_server() {
     socklen_t addr_len = 0;
     int new_sock;
+    #ifdef DEBUG
+    static uint8_t has_debug_printed = 0;
+    #endif
+
     INFO("Starting Server\n");
 
     struct sockaddr client_addr;
@@ -136,6 +153,7 @@ int8_t start_server() {
                     reset_connection(i);
                     free(connected_devices[i]);
                     connected_devices[i] = 0;
+                    continue;
                 }
 
                 if (sock_poll_opts[i].revents & POLLIN) {
@@ -143,10 +161,30 @@ int8_t start_server() {
 
                     int32_t len = recv(connected_devices[i]->addr, buffer, sizeof(buffer), 0);
                     
-                    DEBUGF("%s\n", buffer);
-
                     if (on_client_message != NULL) {
-                        on_client_message();
+                        __IF_DEBUG_ONCE(DM_EOM) DEBUGF("Executing on_client_message at 0x%lx\n", (uint64_t) on_client_message);
+                        struct message *msg = malloc(sizeof(struct message));
+
+                        if (msg == NULL) {
+                            ERRORF("Failed to malloc data for struct message, errno: %d\n", errno);
+                            continue;
+                        }
+
+                        msg->length = len;
+                        msg->data = malloc(sizeof(uint8_t) * len);
+
+                        if (msg->data == NULL) {
+                            free(msg);
+                            msg = 0;
+                            ERRORF("Failed to malloc data for struct message, errno: %d\n", errno);
+                            continue;
+                        }
+
+                        memcpy(msg->data, buffer, len);
+
+                        on_client_message(connected_devices[i], msg);
+                    } else {
+                        WARN("No on_client_message defined\n");
                     }
                 }
             }
@@ -287,7 +325,12 @@ int8_t start_client(void (*cb)()) {
                         }
 
                         memcpy(msg->data, buffer, len);
-                        DEBUGF("Executing on_message at 0x%lx\n", (uint64_t) on_message);
+                        #ifdef DEBUG
+                        if (has_debug_printed & DM_EOM)
+                            (has_debug_printed |= DM_EOM) &&
+                        #endif
+                                DEBUGF("Executing on_message at 0x%lx\n", (uint64_t) on_message);
+
                         on_message(connected_devices[i], msg);
                     } else {
                         WARN("No on_message function defined\n");
@@ -299,13 +342,7 @@ int8_t start_client(void (*cb)()) {
         }
 
         if (cb != NULL) {
-            #ifdef DEBUG
-            if (!(has_debug_printed & 0x01))
-            #endif
-            {
-            DEBUGF("Executing client callback at 0x%lx\n", (uint64_t) cb);
-            has_debug_printed |= 0x01;
-            }
+            __IF_DEBUG_ONCE(DM_EOM) DEBUGF("Executing client callback at 0x%lx\n", (uint64_t) cb);
             cb();
         } else {
             WARN("No client callback defined, this is likely not intentional\n");
@@ -326,4 +363,29 @@ __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, 
     }
 
     return write(dev->addr, data, len);
+}
+
+__ssize_t send_messsages_to(const struct connected_device * const dev, const struct message * messages, uint32_t nmess) {
+    uint32_t i = 0;
+    __ssize_t result, total = 0;
+    if (nmess > 1) {
+        WARN("Frag Packets not yet supported\n");
+    }
+
+    if (dev == NULL || messages == NULL) {
+        return -1;
+    }
+
+    while (i < 1) { // This will need to be changed to nmess in the future
+        result = send_data_to(dev, messages[i].data, messages[i].length);
+
+        if (result < 0) {
+            return result;
+        }
+
+        total += result;
+        i++;
+    }
+
+    return total;
 }
