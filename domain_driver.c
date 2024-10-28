@@ -365,7 +365,7 @@ __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, 
     return write(dev->addr, data, len);
 }
 
-__ssize_t send_messsages_to(const struct connected_device * const dev, const struct message * messages, uint32_t nmess) {
+__ssize_t send_messages_to(const struct connected_device * const dev, const struct message * messages, uint32_t nmess) {
     uint32_t i = 0;
     __ssize_t result, total = 0;
     if (nmess > 1) {

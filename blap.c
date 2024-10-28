@@ -51,7 +51,14 @@ uint8_t create_packet(enum packet_types type, uint8_t *payload, struct message *
  * @returns 0 on success
  */
 uint8_t start_handshake(const struct connected_device * const dev) {
-    send_data_to(dev->addr);
+    struct message *msgs = NULL;
+    uint32_t len;
+
+    if (create_packet(PT_SUP, NULL, &msgs, &len) != 0) {
+        return 0;
+    }
+
+    send_messages_to(dev, msgs, 1);
     return 1;
 }
 

@@ -1,4 +1,4 @@
-FLAGS := -I. -Wall
+FLAGS := -Wall
 .PHONY: test clean
 
 test: out test.out client_test.out
