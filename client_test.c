@@ -6,8 +6,6 @@
 #include "logging.h"
 #include "handlers.h"
 
-uint8_t send_data(uint8_t *data, uint32_t len) { return -1; }
-uint32_t recv_data(uint8_t *buffer, uint32_t len) { return -1; }
 static int c = 1;
 
 void cb() {

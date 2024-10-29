@@ -24,3 +24,5 @@ int8_t start_client(void (*cb)());
 const struct connected_device * const get_connection(uint8_t connection_id);
 __ssize_t send_messages_to(const struct connected_device * const dev, const struct message * messages, uint32_t nmess);
 uint8_t start_handshake(const struct connected_device * const dev);
+__ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, uint32_t length, int32_t timeout);
+uint8_t recv_handshake(const struct connected_device * const dev);

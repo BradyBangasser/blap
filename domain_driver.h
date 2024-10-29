@@ -13,6 +13,7 @@ extern "C" {
 
     int8_t start_server();
     int8_t init_device();
+    uint8_t close_connection(uint8_t cidx);
 #ifdef __cplusplus
 }
 #endif

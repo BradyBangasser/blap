@@ -221,6 +221,11 @@ int8_t start_server() {
             return -1;
         }
 
+        if (recv_handshake(connected_devices[cidx]) != 0) {
+            ERROR("Handshake failed\n");
+            
+        }
+
         INFOF("Accepted connection no %d\n", cidx);
         
         if (on_connect != NULL) {
@@ -257,7 +262,10 @@ int8_t pconnect() {
     set_connection(cidx);
 
     DEBUG("Starting Handshake\n");
-    start_handshake(connected_devices[cidx]);
+    if (start_handshake(connected_devices[cidx])) {
+        ERROR("Handshake failed\n");
+        // terminate connection
+    }
 
     return cidx;
 }
@@ -353,8 +361,15 @@ int8_t start_client(void (*cb)()) {
     }
 }
 
-__ssize_t recv_data(uint8_t *buffer, uint32_t length) {
-
+__ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, uint32_t length, int32_t timeout) {
+    __ssize_t l;
+    while ((l = recv(dev->addr, buffer, length, 0)) <= 0) {
+        if (errno != EWOULDBLOCK) {
+            return -1;
+        }
+    }
+    
+    return l;
 }
 
 __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, uint32_t len) {
@@ -395,4 +410,13 @@ __ssize_t send_messages_to(const struct connected_device * const dev, const stru
     }
 
     return total;
+}
+
+uint8_t close_connection(uint8_t cidx) {
+    // send disconnect packet
+    close(connected_devices[cidx]->addr);
+    free(connected_devices[cidx]);
+    connected_devices[cidx] = 0;
+
+    return 0;
 }
