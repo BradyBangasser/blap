@@ -256,6 +256,9 @@ int8_t pconnect() {
     connected_devices[cidx]->connection_id = cidx;
     set_connection(cidx);
 
+    DEBUG("Starting Handshake\n");
+    start_handshake(connected_devices[cidx]);
+
     return cidx;
 }
 
@@ -348,6 +351,10 @@ int8_t start_client(void (*cb)()) {
             WARN("No client callback defined, this is likely not intentional\n");
         }
     }
+}
+
+__ssize_t recv_data(uint8_t *buffer, uint32_t length) {
+
 }
 
 __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, uint32_t len) {

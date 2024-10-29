@@ -21,22 +21,22 @@ uint8_t create_packet(enum packet_types type, uint8_t *payload, struct message *
     switch (type) {
         case PT_SUP: {
                          static const char sup[] = "sup";
-                         struct message *m = *packet;
-                         m = (struct message *) calloc(1, sizeof(struct message));
+                         *packet = (struct message *) calloc(1, sizeof(struct message));
 
-                         if (m == NULL) {
+                         if (*packet == NULL) {
                              return 1;
                          }
 
-                         m->data = malloc(sizeof(sup));
+                         (*packet)->data = malloc(sizeof(sup));
 
-                         if (m->data == NULL) {
-                             free(m);
-                             m = 0;
+                         if ((*packet)->data == NULL) {
+                             free(*packet);
+                             *packet = 0;
                              return 1;
                          }
 
-                         memcpy(m->data, sup, sizeof(sup));
+                         memcpy((*packet)->data, sup, sizeof(sup));
+                         (*packet)->length = sizeof(sup);
                          *length = 1;
                          return 0;
         }
@@ -59,6 +59,8 @@ uint8_t start_handshake(const struct connected_device * const dev) {
     }
 
     send_messages_to(dev, msgs, 1);
+
+    
     return 1;
 }
 
@@ -73,6 +75,8 @@ void on_disconnect(struct connected_device *const connection) {
 }
 
 void on_client_message(const struct connected_device * const src, struct message * const msg) {
+    DEBUGF("%s\n", msg->data);
+    ERROR("HERE\n");
     char message[] = "From the Server";
     write(src->addr, message, sizeof(message));
 }
