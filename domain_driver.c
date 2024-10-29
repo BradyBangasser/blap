@@ -223,7 +223,8 @@ int8_t start_server() {
 
         if (recv_handshake(connected_devices[cidx]) != 0) {
             ERROR("Handshake failed\n");
-            
+            close_connection(cidx);
+            continue;
         }
 
         INFOF("Accepted connection no %d\n", cidx);
@@ -264,7 +265,8 @@ int8_t pconnect() {
     DEBUG("Starting Handshake\n");
     if (start_handshake(connected_devices[cidx])) {
         ERROR("Handshake failed\n");
-        // terminate connection
+        close_connection(cidx);
+        return -2;
     }
 
     return cidx;
@@ -363,9 +365,25 @@ int8_t start_client(void (*cb)()) {
 
 __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, uint32_t length, int32_t timeout) {
     __ssize_t l;
+    struct timespec ts, cts;
+
+    if (timeout > 0) {
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+
+        ts.tv_sec += timeout / 1000;
+        ts.tv_nsec += (timeout % 1000) * (uint) 1e6;
+    }
+
     while ((l = recv(dev->addr, buffer, length, 0)) <= 0) {
         if (errno != EWOULDBLOCK) {
             return -1;
+        }
+
+        if (timeout > 0) {
+            clock_gettime(CLOCK_MONOTONIC, &cts);
+            if (cts.tv_sec >= ts.tv_sec && cts.tv_nsec >= ts.tv_nsec) {
+                return -2;
+            }
         }
     }
     

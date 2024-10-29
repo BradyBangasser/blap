@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+#include <stdlib.h>
 
 #include "logging.h"
 #include "handlers.h"
@@ -17,6 +18,10 @@ void cb() {
         c = 0;
         connection_id = pconnect();
 
+        if (connection_id < 0) {
+            ERRORF("Failed to connect, error: %d\n", connection_id);
+            exit(1);
+        }
     }
 
     if (connection_id == -1) {
@@ -27,7 +32,7 @@ void cb() {
 
     if (cdev == NULL) {
         ERROR("Failed to fetch connection\n");
-        return;
+        exit(1);
     }
 
     if (recv(cdev->addr, buffer, sizeof(buffer), 0) > 0) {

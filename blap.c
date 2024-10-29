@@ -81,11 +81,16 @@ uint8_t start_handshake(const struct connected_device * const dev) {
         return 1;
     }
 
+
     send_messages_to(dev, msgs, 1);
     
-    if (recv_data(dev, buffer, sizeof(buffer), -1) <= 0 || strcmp((char *) buffer, "sup") != 0) {
-        return 2;
+    WARN("H\n");
+    if (recv_data(dev, buffer, sizeof(buffer), 5000) <= 0 || strcmp((char *) buffer, "sup") != 0) {
+        ERROR("THIS\n");
+        return 3;
     }
+    WARN("H\n");
+
 
     // send ESUP packets
     if (create_packet(PT_ESUP, NULL, &msgs, &len) != 0) {
@@ -94,7 +99,8 @@ uint8_t start_handshake(const struct connected_device * const dev) {
 
     send_messages_to(dev, msgs, 1);
 
-    if (recv_data(dev, buffer, sizeof(buffer), -1) <= 0 || strcmp((char *) buffer, "esup") != 0) {
+    if (recv_data(dev, buffer, sizeof(buffer), 5000) <= 0 || strcmp((char *) buffer, "esup") != 0) {
+        ERROR("HERE\n");
         return 5;
     }
     
@@ -102,6 +108,7 @@ uint8_t start_handshake(const struct connected_device * const dev) {
 }
 
 uint8_t recv_handshake(const struct connected_device * const dev) {
+    WARN("Starting Handshake\n");
     uint8_t buffer[512];
     __ssize_t len;
     uint32_t ilen;
@@ -109,7 +116,7 @@ uint8_t recv_handshake(const struct connected_device * const dev) {
 
     // expect sup
     // TODO, create timeouts
-    len = recv_data(dev, buffer, sizeof(buffer), -1);
+    len = recv_data(dev, buffer, sizeof(buffer), 5000);
 
     if (len <= 0) {
         return 1;
@@ -120,6 +127,23 @@ uint8_t recv_handshake(const struct connected_device * const dev) {
     }
 
     if (create_packet(PT_SUP, NULL, &msgs, &ilen) != 0) {
+        return 3;
+    }
+
+    send_messages_to(dev, msgs, 1);
+
+    len = recv_data(dev, buffer, sizeof(buffer), 5000);
+    DEBUG("HERE\n");
+
+    if (len <= 0) {
+        return 1;
+    }
+
+    if (strcmp((char *) buffer, "esup") != 0) {
+        return 2;
+    }
+
+    if (create_packet(PT_ESUP, NULL, &msgs, &ilen) != 0) {
         return 3;
     }
 
