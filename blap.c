@@ -89,18 +89,18 @@ uint8_t start_handshake(const struct connected_device * const dev) {
         ERROR("THIS\n");
         return 3;
     }
+
+
     WARN("H\n");
-
-
     // send ESUP packets
     if (create_packet(PT_ESUP, NULL, &msgs, &len) != 0) {
         return 4;
     }
 
+    WARN("H\n");
     send_messages_to(dev, msgs, 1);
 
     if (recv_data(dev, buffer, sizeof(buffer), 5000) <= 0 || strcmp((char *) buffer, "esup") != 0) {
-        ERROR("HERE\n");
         return 5;
     }
     
