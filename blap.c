@@ -3,19 +3,28 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <stddef.h>
 
 enum packet_types {
-    PT_SUP,
-    PT_ESUP,
+    PT_SUP = 0x01,
+    PT_ESUP = 0x02,
+    PT_HB = 0x04,
 };
 
 struct blap_packet {
     uint32_t length;
 };
 
+/**
+ * returns 1 to indicate that the message was handled, otherwise 0
+ */
+uint8_t handle_system_messages(struct message *msg) {
+    return 0;
+}
+
 uint8_t create_packet(enum packet_types type, uint8_t *payload, struct message **packet, uint32_t *length) {
 
-    if (packet == NULL || (payload == NULL && type != PT_SUP) || length == NULL) {
+    if (packet == NULL || (payload == NULL && (type & (PT_SUP | PT_ESUP)) == 0) || length == NULL) {
         return 2;
     }
 
@@ -62,6 +71,30 @@ uint8_t create_packet(enum packet_types type, uint8_t *payload, struct message *
                           *length = 1;
                           return 0;
                       }
+        case PT_HB: {
+                        // Heartbeat format: 
+                        // YYYYMMDD:
+
+                        static const char hb[] = "heartbeat";
+                        *packet = (struct message *) calloc(1, sizeof(struct message));
+
+                        if (*packet == NULL) {
+                            return 1;
+                        }
+
+                        (*packet)->data = malloc(sizeof(hb));
+
+                        if ((*packet)->data == NULL) {
+                            free(*packet);
+                            *packet = 0;
+                            return 1;
+                        }
+
+                        memcpy((*packet)->data, hb, sizeof(hb));
+                        (*packet)->length = sizeof(hb);
+                        *length = 1;
+                        return 0;
+                    }
     }
 
     return 1;
@@ -84,20 +117,17 @@ uint8_t start_handshake(const struct connected_device * const dev) {
 
     send_messages_to(dev, msgs, 1);
     
-    WARN("H\n");
-    if (recv_data(dev, buffer, sizeof(buffer), 5000) <= 0 || strcmp((char *) buffer, "sup") != 0) {
-        ERROR("THIS\n");
+    if ((len = recv_data(dev, buffer, sizeof(buffer), 5000)) <= 0 || strcmp((char *) buffer, "sup") != 0) {
+        DEBUGF("Received %d bytes\n", len);
         return 3;
     }
 
 
-    WARN("H\n");
     // send ESUP packets
     if (create_packet(PT_ESUP, NULL, &msgs, &len) != 0) {
         return 4;
     }
 
-    WARN("H\n");
     send_messages_to(dev, msgs, 1);
 
     if (recv_data(dev, buffer, sizeof(buffer), 5000) <= 0 || strcmp((char *) buffer, "esup") != 0) {
@@ -123,6 +153,8 @@ uint8_t recv_handshake(const struct connected_device * const dev) {
     }
 
     if (strcmp((char *) buffer, "sup") != 0) {
+        struct message *t = (struct message *) buffer;
+        ERRORF("HERE '%s'\n", (char *) t + offsetof(struct message, data));
         return 2;
     }
 
@@ -133,7 +165,6 @@ uint8_t recv_handshake(const struct connected_device * const dev) {
     send_messages_to(dev, msgs, 1);
 
     len = recv_data(dev, buffer, sizeof(buffer), 5000);
-    DEBUG("HERE\n");
 
     if (len <= 0) {
         return 1;
@@ -163,8 +194,6 @@ void on_disconnect(struct connected_device *const connection) {
 }
 
 void on_client_message(const struct connected_device * const src, struct message * const msg) {
-    DEBUGF("%s\n", msg->data);
-    ERROR("HERE\n");
     char message[] = "From the Server";
     write(src->addr, message, sizeof(message));
 }

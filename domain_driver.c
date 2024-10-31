@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <memory.h>
 #include <stdlib.h>
+#include <stddef.h>
 
 #define MAXCONNS 8
 #ifdef DEBUG
@@ -268,6 +269,7 @@ int8_t pconnect() {
         close_connection(cidx);
         return -2;
     }
+    DEBUG("Handshake success\n");
 
     return cidx;
 }
@@ -366,6 +368,11 @@ int8_t start_client(void (*cb)()) {
 __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, uint32_t length, int32_t timeout) {
     __ssize_t l;
     struct timespec ts, cts;
+    uint8_t *tbuf = malloc((sizeof(struct message) - sizeof(uint8_t *) + length) * sizeof(char));
+
+    if (tbuf == NULL) {
+        return -3;
+    }
 
     if (timeout > 0) {
         clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -374,8 +381,9 @@ __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, 
         ts.tv_nsec += (timeout % 1000) * (uint) 1e6;
     }
 
-    while ((l = recv(dev->addr, buffer, length, 0)) <= 0) {
+    while ((l = recv(dev->addr, tbuf, length, 0)) <= 0) {
         if (errno != EWOULDBLOCK) {
+            ERRORF("Error receiving data: %d\n", errno);
             return -1;
         }
 
@@ -386,6 +394,9 @@ __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, 
             }
         }
     }
+
+    memcpy(buffer, tbuf + offsetof(struct message, data), ((struct message *) tbuf)->length);
+    free(tbuf);
     
     return l;
 }
@@ -406,8 +417,10 @@ __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, 
 }
 
 __ssize_t send_messages_to(const struct connected_device * const dev, const struct message * messages, uint32_t nmess) {
-    uint32_t i = 0;
+    uint32_t i = 0, full_packet_len;
     __ssize_t result, total = 0;
+    uint8_t *data = NULL;
+
     if (nmess > 1) {
         WARN("Frag Packets not yet supported\n");
     }
@@ -417,9 +430,25 @@ __ssize_t send_messages_to(const struct connected_device * const dev, const stru
     }
 
     while (i < 1) { // This will need to be changed to nmess in the future
-        result = send_data_to(dev, messages[i].data, messages[i].length);
+        full_packet_len = (sizeof(struct message) - sizeof(uint8_t *) + messages[i].length) * sizeof(char);
+        data = malloc(full_packet_len);
+
+        DEBUGF("Packet Length: %d\n", full_packet_len);
+        if (data == NULL) {
+            return -1;
+        }
+
+        memcpy(data, messages + i, offsetof(struct message, data));
+        memcpy(data + offsetof(struct message, data), messages[i].data, messages[i].length);
+
+        result = send_data_to(dev, data, full_packet_len);
+
+        DEBUGF("RESULT: %li\n", result);
+        free(data);
+        data = NULL;
 
         if (result < 0) {
+            ERRORF("Failed to send data, errno: %d\n", errno);
             return result;
         }
 

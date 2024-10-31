@@ -8,6 +8,7 @@ struct connected_device {
 
 // TODO, add buffering to this to make it more efficient
 struct message {
-    uint8_t *data;
+    uint8_t packet_type;
     uint32_t length;
-};
+    uint8_t *data;
+}__attribute__((packed));
