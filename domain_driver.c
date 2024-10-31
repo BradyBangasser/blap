@@ -269,7 +269,12 @@ int8_t pconnect() {
         close_connection(cidx);
         return -2;
     }
+
     DEBUG("Handshake success\n");
+
+    sock_poll_opts[cidx].fd = sock;
+    sock_poll_opts[cidx].events = POLLIN | POLLHUP;
+    sock_poll_opts[cidx].revents = POLLIN | POLLHUP;
 
     return cidx;
 }
@@ -309,11 +314,14 @@ int8_t start_client(void (*cb)()) {
                 }
 
                 if (sock_poll_opts[i].revents & POLLIN) {
-                    len = recv(connected_devices[i]->addr, buffer, sizeof(buffer), 0);
+                    // len = recv(connected_devices[i]->addr, buffer, sizeof(buffer), 0);
+                    len = recv_data(connected_devices[i], buffer, sizeof(buffer), -1);
 
-                    if (len == -1) {
-                        if (errno == EWOULDBLOCK) {
-                            WARN("Poll reported message, but recv didn't\n");
+                    if (len < 0) {
+                        if (len == -4) {
+                            #ifdef DEBUG
+                            WARN("Packet dropped\n");
+                            #endif
                             continue;
                         }
 
@@ -366,9 +374,11 @@ int8_t start_client(void (*cb)()) {
 }
 
 __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, uint32_t length, int32_t timeout) {
+    DEBUG("THIS\n");
     __ssize_t l;
     struct timespec ts, cts;
     uint8_t *tbuf = malloc((sizeof(struct message) - sizeof(uint8_t *) + length) * sizeof(char));
+    struct message *msg = NULL;
 
     if (tbuf == NULL) {
         return -3;
@@ -384,18 +394,28 @@ __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, 
     while ((l = recv(dev->addr, tbuf, length, 0)) <= 0) {
         if (errno != EWOULDBLOCK) {
             ERRORF("Error receiving data: %d\n", errno);
+            free(tbuf);
             return -1;
         }
 
         if (timeout > 0) {
             clock_gettime(CLOCK_MONOTONIC, &cts);
             if (cts.tv_sec >= ts.tv_sec && cts.tv_nsec >= ts.tv_nsec) {
+                free(tbuf);
                 return -2;
             }
         }
     }
 
-    memcpy(buffer, tbuf + offsetof(struct message, data), ((struct message *) tbuf)->length);
+    msg = (struct message *) tbuf;
+
+    if (msg->length > (l - sizeof(struct message) + sizeof(uint8_t *))) {
+        // drop packet
+        free(tbuf);
+        return -4;
+    }
+
+    memcpy(buffer, tbuf + offsetof(struct message, data), msg->length);
     free(tbuf);
     
     return l;
@@ -433,7 +453,6 @@ __ssize_t send_messages_to(const struct connected_device * const dev, const stru
         full_packet_len = (sizeof(struct message) - sizeof(uint8_t *) + messages[i].length) * sizeof(char);
         data = malloc(full_packet_len);
 
-        DEBUGF("Packet Length: %d\n", full_packet_len);
         if (data == NULL) {
             return -1;
         }
@@ -443,7 +462,6 @@ __ssize_t send_messages_to(const struct connected_device * const dev, const stru
 
         result = send_data_to(dev, data, full_packet_len);
 
-        DEBUGF("RESULT: %li\n", result);
         free(data);
         data = NULL;
 

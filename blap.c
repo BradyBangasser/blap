@@ -144,8 +144,6 @@ uint8_t recv_handshake(const struct connected_device * const dev) {
     uint32_t ilen;
     struct message *msgs = 0;
 
-    // expect sup
-    // TODO, create timeouts
     len = recv_data(dev, buffer, sizeof(buffer), 5000);
 
     if (len <= 0) {
@@ -153,8 +151,6 @@ uint8_t recv_handshake(const struct connected_device * const dev) {
     }
 
     if (strcmp((char *) buffer, "sup") != 0) {
-        struct message *t = (struct message *) buffer;
-        ERRORF("HERE '%s'\n", (char *) t + offsetof(struct message, data));
         return 2;
     }
 

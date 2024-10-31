@@ -11,8 +11,6 @@ static int c = 1;
 
 void cb() {
     static int8_t connection_id = -1;
-    uint8_t buffer[256] = { 0 };
-    const struct connected_device *cdev = NULL;
 
     if (c) {
         c = 0;
@@ -22,27 +20,6 @@ void cb() {
             ERRORF("Failed to connect, error: %d\n", connection_id);
             exit(1);
         }
-    }
-
-    if (connection_id == -1) {
-        return;    
-    }
-
-    cdev = get_connection(connection_id);
-
-    if (cdev == NULL) {
-        ERROR("Failed to fetch connection\n");
-        exit(1);
-    }
-
-    if (recv(cdev->addr, buffer, sizeof(buffer), 0) > 0) {
-        INFOF("Received message from server: '%s'\n", buffer);
-        if (strcmp((char *) buffer, "From Server")) {
-            return;
-        }
-
-        int res = write(cdev->addr, buffer, sizeof(buffer));
-        DEBUGF("res: %d\n", res);
     }
 }
 
