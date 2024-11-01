@@ -1,19 +1,10 @@
 #include "handlers.h"
 #include "logging.h"
+#include "blap.h"
 
 #include <unistd.h>
 #include <stdlib.h>
 #include <stddef.h>
-
-enum packet_types {
-    PT_SUP = 0x01,
-    PT_ESUP = 0x02,
-    PT_HB = 0x04,
-};
-
-struct blap_packet {
-    uint32_t length;
-};
 
 /**
  * returns 1 to indicate that the message was handled, otherwise 0
@@ -24,7 +15,7 @@ uint8_t handle_system_messages(struct message *msg) {
 
 uint8_t create_packet(enum packet_types type, uint8_t *payload, struct message **packet, uint32_t *length) {
 
-    if (packet == NULL || (payload == NULL && (type & (PT_SUP | PT_ESUP)) == 0) || length == NULL) {
+    if (packet == NULL || (payload == NULL && type == PT_PAYLOAD) || length == NULL) {
         return 2;
     }
 
@@ -122,7 +113,6 @@ uint8_t start_handshake(const struct connected_device * const dev) {
         return 3;
     }
 
-
     // send ESUP packets
     if (create_packet(PT_ESUP, NULL, &msgs, &len) != 0) {
         return 4;
@@ -151,6 +141,7 @@ uint8_t recv_handshake(const struct connected_device * const dev) {
     }
 
     if (strcmp((char *) buffer, "sup") != 0) {
+        ERRORF("Handshake failed, expected 'sup', received '%s'\n", buffer);
         return 2;
     }
 
@@ -192,4 +183,15 @@ void on_disconnect(struct connected_device *const connection) {
 void on_client_message(const struct connected_device * const src, struct message * const msg) {
     char message[] = "From the Server";
     write(src->addr, message, sizeof(message));
+}
+
+void on_message(const struct connected_device * const dev, struct message *msg) {
+    static uint8_t i = 0;
+    static uint8_t buffer[] = "Hello There Server";
+
+    if (i < 5) {
+        i++;
+        INFOF("Received message from server: '%s'\n", msg->data);
+        send_data_to(dev, buffer, sizeof(buffer));
+    }
 }

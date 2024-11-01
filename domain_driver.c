@@ -3,6 +3,7 @@
 #include "logging.h"
 #include "domain_driver.h"
 #include "handlers.h"
+#include "blap.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -374,10 +375,9 @@ int8_t start_client(void (*cb)()) {
 }
 
 __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, uint32_t length, int32_t timeout) {
-    DEBUG("THIS\n");
     __ssize_t l;
     struct timespec ts, cts;
-    uint8_t *tbuf = malloc((sizeof(struct message) - sizeof(uint8_t *) + length) * sizeof(char));
+    uint8_t *tbuf = calloc(1, (sizeof(struct message) - sizeof(uint8_t *) + length + 1) * sizeof(char));
     struct message *msg = NULL;
 
     if (tbuf == NULL) {
@@ -411,6 +411,16 @@ __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, 
 
     if (msg->length > (l - sizeof(struct message) + sizeof(uint8_t *))) {
         // drop packet
+        #ifdef DEBUG
+        ERRORF("Packet of size 0x%lx dropped\n", l);
+        DEBUG("Received:\n");
+        DEBUG();
+        for (__ssize_t i = 0; i < l; i++) {
+            printf("0x%X (%c) ", tbuf[i], tbuf[i]);
+        }
+        printf("\n");
+
+        #endif
         free(tbuf);
         return -4;
     }
@@ -421,7 +431,7 @@ __ssize_t recv_data(const struct connected_device * const dev, uint8_t *buffer, 
     return l;
 }
 
-__ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, uint32_t len) {
+__ssize_t __send_data_to(const struct connected_device* const dev, uint8_t *data, uint32_t len) {
     // ensure connection is valid
 
     if (dev == NULL || data == NULL) {
@@ -434,6 +444,29 @@ __ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, 
     }
 
     return write(dev->addr, data, len);
+}
+
+__ssize_t send_data_to(const struct connected_device* const dev, uint8_t *data, uint32_t len) {
+    uint32_t total_length = len + sizeof(struct message) - sizeof(uint8_t *) + 1;
+    __ssize_t ret;
+    struct message msg;
+    uint8_t *buffer = calloc(sizeof(char), total_length);    
+
+    if (buffer == NULL) {
+        return -1;
+    }
+
+    msg.length = len;
+    msg.packet_type = PT_PAYLOAD;
+
+    memcpy(buffer, &msg, offsetof(struct message, data));
+    memcpy(buffer + offsetof(struct message, data), data, len);
+    memset(buffer + total_length - 1, 0, 1);
+
+    ret = __send_data_to(dev, buffer, total_length);
+    free(buffer);
+
+    return ret;
 }
 
 __ssize_t send_messages_to(const struct connected_device * const dev, const struct message * messages, uint32_t nmess) {
@@ -450,8 +483,8 @@ __ssize_t send_messages_to(const struct connected_device * const dev, const stru
     }
 
     while (i < 1) { // This will need to be changed to nmess in the future
-        full_packet_len = (sizeof(struct message) - sizeof(uint8_t *) + messages[i].length) * sizeof(char);
-        data = malloc(full_packet_len);
+        full_packet_len = (sizeof(struct message) - sizeof(uint8_t *) + messages[i].length + 1);
+        data = calloc(sizeof(char), full_packet_len);
 
         if (data == NULL) {
             return -1;
@@ -459,8 +492,9 @@ __ssize_t send_messages_to(const struct connected_device * const dev, const stru
 
         memcpy(data, messages + i, offsetof(struct message, data));
         memcpy(data + offsetof(struct message, data), messages[i].data, messages[i].length);
+        memset(data + full_packet_len - 1, 0, 1);
 
-        result = send_data_to(dev, data, full_packet_len);
+        result = __send_data_to(dev, data, full_packet_len);
 
         free(data);
         data = NULL;
